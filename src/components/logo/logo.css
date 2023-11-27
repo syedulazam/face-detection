@@ -1,0 +1,11 @@
+h1 {
+  height: 300px;
+  width: 300px;
+  background: linear-gradient(to right, #fc4fcf, #61c2ee);
+}
+
+img {
+  padding-left: 40px;
+  position: relative;
+  bottom: 50px;
+}

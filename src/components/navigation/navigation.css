@@ -1,0 +1,8 @@
+body {
+  font-family: sans-serif;
+  background: linear-gradient(to right, #fc4fcf, #61c2ee);
+}
+
+.margin {
+  margin-right: 20px;
+}
