@@ -8,7 +8,6 @@ import Signin from "../components/signin/signin";
 import Register from "../components/register/register";
 import ParticlesBg from "particles-bg";
 import reportWebVitals from "../reportWebVitals";
-import { toHaveAccessibleDescription } from "@testing-library/jest-dom/matchers";
 
 let config = {
   num: [4, 7],
@@ -93,17 +92,44 @@ const returnClarifaiRequestOptions = (imageUrl) => {
   // this will default to the latest version_id
 };
 
+const initialState = {
+  input: "",
+  imageUrl: "",
+  box: [],
+  route: "signin",
+  isSignedin: false,
+  user: {
+    id: "",
+    name: "",
+    email: "",
+    entries: 0,
+    joining: "",
+  },
+}; // We made this change so that whatever when we log out from someone's acc, the pic that we placed in that acc's page doesn't appear in someone else's page when we
+// log into some other acc. So by using the above code, the main page will be empty when we sign out and sign in through some other acc.
+
 class App extends Component {
+  componentDidMount() {
+    fetch("http://localhost:3000/")
+      .then((response) => response.json())
+      .then(console.log);
+  }
   constructor() {
     super();
-    this.state = {
-      input: "",
-      imageUrl: "",
-      box: [],
-      route: "signin",
-      isSignedin: false,
-    };
+    this.state = initialState;
   }
+
+  loadUser = (data) => {
+    this.setState({
+      user: {
+        id: data.id,
+        name: data.name,
+        email: data.email,
+        entries: data.entries,
+        joining: data.joining,
+      },
+    });
+  };
 
   onInputChange = (event) => {
     this.setState({ input: event.target.value }); // We don't write this.state.input in place of input because we used setState.
@@ -142,19 +168,29 @@ class App extends Component {
   };
 
   onButtonChange = () => {
-    this.setState({ imageUrl: this.state.input, box: [] }); // We don't write this.state.input in place of input because we used setState.
+    this.setState({ imageUrl: this.state.input, box: [] });
 
     fetch(
       "https://api.clarifai.com/v2/models/" + "face-detection" + "/outputs",
       returnClarifaiRequestOptions(this.state.input)
     )
-      .then((response) => response.json()) // Also, over here, we wrote this.state.input and not this.state.imageUrl becuase we are trying to pass the link of
-      // the image as a parameter, which is our request. This request gets converted to JSON form later in the next line
-      // of code.
-      // .then((response) => console.log(response))
+      .then((response) => response.json())
       .then((response) => {
         if (response.outputs[0].data.regions) {
           this.displayFaceBox(this.faceRecognition(response));
+          // Increment user's entries count
+          fetch("http://localhost:3000/image", {
+            method: "put",
+            headers: { "Content-type": "application/json" },
+            body: JSON.stringify({
+              id: this.state.user.id,
+            }),
+          })
+            .then((response) => response.json())
+            .then((count) => {
+              this.setState(Object.assign(this.state.user, { entries: count }));
+            })
+            .catch(console.log);
         } else {
           this.displayFaceBox([]);
         }
@@ -163,11 +199,11 @@ class App extends Component {
   };
 
   routeChange = (choose) => {
-    // if (choose === "home") {
-    //   this.setState({ isSigned: true });
-    // } else {
-    //   this.setState({ isSigned: false });
-    // }
+    if (choose === "home") {
+      this.setState(initialState);
+    } else {
+      this.setState(initialState);
+    }
     this.setState({ route: choose });
   };
 
@@ -183,7 +219,10 @@ class App extends Component {
         {this.state.route == "home" ? (
           <div>
             <Logo />
-            <Rank />
+            <Rank
+              name={this.state.user.name}
+              entries={this.state.user.entries}
+            />
             <ImageLinkForm
               input={this.onInputChange}
               button={this.onButtonChange}
@@ -194,9 +233,13 @@ class App extends Component {
             />
           </div>
         ) : this.state.route == "signin" ? (
-          <Signin onRouteChange={this.routeChange} onSignin={this.signin} />
+          <Signin
+            loadUser={this.loadUser}
+            onRouteChange={this.routeChange}
+            onSignin={this.signin}
+          />
         ) : (
-          <Register onRouteChange={this.routeChange} />
+          <Register loadUser={this.loadUser} onRouteChange={this.routeChange} />
         )}
         {/* In this render code, we placed another {} to enclose the functions from Signin to FaceDetection. That's because we are using if else statement, which
                in this case is represented by ? and :, where "?" represents the first condition to be activated, and the ":" represents the else condition. */}
